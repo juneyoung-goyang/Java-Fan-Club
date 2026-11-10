@@ -266,7 +266,7 @@ INSERT INTO fee_setting (base_minutes, base_price, extra_unit, extra_price, appl
 INSERT INTO menu (name, category, price, stock) VALUES
  ('아메리카노','음료',3000,50),('오렌지주스','음료',3000,30),('콜라','음료',2000,24),
  ('감자칩','간식',2500,20),('츄러스','간식',3500,0),('라면','식사',4500,15),('떡볶이','식사',6000,10);
-UPDATE menu SET sold_out = 1 WHERE stock = 0;
+UPDATE menu SET sold_out = 1 WHERE menu_id = 5;  -- 츄러스(재고 0) 품절. Workbench 안전 모드(Safe Updates)는 키 없는 WHERE를 막으므로 번호로 지정
 INSERT INTO game (name, genre, min_player, max_player, difficulty, play_min, stock, location) VALUES
  ('스플렌더','전략',2,4,2,30,2,'A-2'),('딕싯','가족',3,6,2,30,2,'C-2'),('우노','카드',2,10,1,20,4,'B-2'),
  ('젠가','파티',2,8,1,15,2,'C-1'),('할리갈리','카드',2,6,1,20,2,'B-1'),('카탄','전략',3,4,3,60,1,'A-1');
