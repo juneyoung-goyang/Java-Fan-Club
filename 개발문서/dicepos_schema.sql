@@ -11,7 +11,8 @@ USE dicepos;
 CREATE TABLE staff (
   staff_id         INT           NOT NULL AUTO_INCREMENT COMMENT '직원 번호',
   login_id         VARCHAR(20)   NOT NULL COMMENT '아이디 (중복 불가)',
-  password         VARCHAR(64)   NOT NULL COMMENT '비밀번호 (SHA-256으로 암호화한 값만 저장)',
+  password         VARCHAR(64)   NOT NULL COMMENT '비밀번호 해시 (솔트를 붙여 SHA-256으로 바꾼 64자 값)',
+  salt             VARCHAR(32)   NOT NULL COMMENT '솔트 (직원마다 만든 무작위 값, 해시할 때 비밀번호에 붙임)',
   name             VARCHAR(20)   NOT NULL COMMENT '이름',
   phone1           VARCHAR(3)    NOT NULL COMMENT '전화번호 1',
   phone2           VARCHAR(4)    NOT NULL COMMENT '전화번호 2',
@@ -48,9 +49,9 @@ CREATE TABLE member (
 -- cafe_table (카페 테이블) : 담당 ⑤
 CREATE TABLE cafe_table (
   table_no         INT           NOT NULL COMMENT '테이블 번호',
-  table_name       VARCHAR(10)   NOT NULL COMMENT '표시 이름 (예: T1, 룸A)',
-  capacity         INT           NOT NULL COMMENT '최대 좌석 수 (인원 초과 검사)',
-  is_active        TINYINT(1)    NOT NULL DEFAULT 1 COMMENT '사용 여부 (0이면 테이블 현황에 표시하지 않음)',
+  table_name       VARCHAR(10)   NOT NULL COMMENT '표시 이름 (예: Room 17)',
+  capacity         INT           NOT NULL COMMENT '정원 (처음 등록·공사 시에만 수정, 인원 초과 검사)',
+  is_active        TINYINT(1)    NOT NULL DEFAULT 1 COMMENT '사용 여부 (1 사용가능 / 0 사용불가: 수리 등)',
   PRIMARY KEY (table_no),
   UNIQUE (table_name)
 ) COMMENT '카페 테이블';
@@ -114,7 +115,7 @@ CREATE TABLE work_log (
   work_date        DATE          NOT NULL COMMENT '근무 날짜',
   clock_in         DATETIME      NOT NULL COMMENT '출근 시각',
   clock_out        DATETIME      COMMENT '퇴근 시각 (근무 중이면 NULL)',
-  work_minutes     INT           COMMENT '그날 근무시간(분). 퇴근할 때 계산해서 저장',
+  work_minutes     INT           COMMENT '그날 실근무 시간(분) = 퇴근 − 출근 − 휴게. 퇴근할 때 계산해서 저장',
   note             VARCHAR(100)  COMMENT '비고 (관리자가 시간을 고친 경우 그 사유)',
   PRIMARY KEY (log_id),
   FOREIGN KEY (staff_id) REFERENCES staff(staff_id)
@@ -199,7 +200,7 @@ CREATE TABLE order_detail (
 -- purchase_order (발주) : 담당 ④
 CREATE TABLE purchase_order (
   po_id            INT           NOT NULL AUTO_INCREMENT COMMENT '발주 번호',
-  staff_id         INT           COMMENT '발주한 직원',
+  staff_id         INT           COMMENT '발주를 허락한 관리자 (관리자 확인을 통과한 직원 번호)',
   supplier         VARCHAR(30)   COMMENT '거래처 (선택 입력)',
   order_date       DATETIME      NOT NULL COMMENT '발주 일시',
   total_amount     INT           NOT NULL DEFAULT 0 COMMENT '총 발주 금액 (= 발주 상세 금액의 합)',
@@ -244,7 +245,7 @@ CREATE TABLE game_rental (
   rental_id        INT           NOT NULL AUTO_INCREMENT COMMENT '대여 번호',
   game_id          INT           NOT NULL COMMENT '대여·예약한 게임',
   usage_id         INT           NOT NULL COMMENT '어느 테이블 이용 건인지',
-  status           VARCHAR(10)   NOT NULL COMMENT '상태 (예약 / 대여중 / 반납 / 취소)',
+  status           VARCHAR(10)   NOT NULL COMMENT '상태 (예약 / 호출 / 대여중 / 반납 / 취소)',
   request_time     DATETIME      NOT NULL COMMENT '신청 시각 (예약 대기 순서의 기준)',
   start_time       DATETIME      COMMENT '대여 시작 시각 (게임을 받은 시각)',
   return_time      DATETIME      COMMENT '반납 시각 (대여 중이면 NULL)',
@@ -255,20 +256,26 @@ CREATE TABLE game_rental (
 
 -- =========================================================
 -- 예시 데이터 (개발·시연용, 필요하면 각자 추가)
--- 비밀번호는 SHA-256 값: admin1234 / staff1234
+-- 비밀번호는 솔트를 붙여 SHA-256으로 바꾼 값: SHA-256(salt + 비밀번호)
+-- 아이디 / 비밀번호 : admin / admin1234 (관리자), seoyeon / admin1234 (관리자), minseo / staff1234 (직원)
 -- =========================================================
-INSERT INTO staff (login_id, password, name, phone1, phone2, phone3, role, emp_type, hourly_wage, monthly_pay, hire_date, status) VALUES
- ('admin', 'ac9689e2272427085e35b9d3e3e8bed88cb3434828b43b86fc0596cad4c6e270', '김지우', '010', '1234', '5678', '관리자', '정규직', NULL, 2600000, '2024-03-02', '재직'),
- ('minseo', '02defbfb8190f9d0719ef7a23da2049bd2e61442bc14021a6d8a4ae35ca334b7', '박민서', '010', '9876', '5432', '직원', '시간제', 10320, NULL, '2026-08-15', '재직');
-INSERT INTO cafe_table (table_no, table_name, capacity) VALUES
- (1,'T1',4),(2,'T2',4),(3,'T3',4),(4,'T4',2),(5,'T5',6),(6,'T6',6),(7,'T7',4),(8,'T8',4);
+INSERT INTO staff (login_id, password, salt, name, phone1, phone2, phone3, role, emp_type, hourly_wage, monthly_pay, hire_date, status) VALUES
+ ('admin', '8410d83080411b4d7765f3e45ba3c23b08edfe3a05feda2e7611fad8273521a6', 'a3f91c0e7b2d4e18', '김지우', '010', '1234', '5678', '관리자', '정규직', NULL, 2600000, '2024-03-02', '재직'),
+ ('seoyeon', '289ca15bfaa78d066f0a58a58afc30d91509edf5f685b16fe3a176466f70c726', '5c8e2a9d1f0b7364', '한서연', '010', '5678', '1234', '관리자', '정규직', NULL, 2800000, '2023-07-10', '재직'),
+ ('minseo', '42c1dec6047f6836d87e8b1cbef8bbf659e0cf8072e2ba3b491813275279a4e9', 'e41d7a0c93b85f26', '박민서', '010', '9876', '5432', '직원', '시간제', 10320, NULL, '2026-08-15', '재직');
+INSERT INTO cafe_table (table_no, table_name, capacity, is_active) VALUES
+ (17,'Room 17',4,1),(18,'Room 18',4,1),(19,'Room 19',4,1),(20,'Room 20',6,1),(21,'Room 21',4,1),
+ (22,'Room 22',4,0),(23,'Room 23',6,1),(24,'Room 24',2,1),(25,'Room 25',4,1),(26,'Room 26',4,1);
 INSERT INTO fee_setting (base_minutes, base_price, extra_unit, extra_price, apply_date) VALUES (60, 3500, 10, 500, '2026-11-01');
 INSERT INTO menu (name, category, price, stock) VALUES
  ('아메리카노','음료',3000,50),('오렌지주스','음료',3000,30),('콜라','음료',2000,24),
  ('감자칩','간식',2500,20),('츄러스','간식',3500,0),('라면','식사',4500,15),('떡볶이','식사',6000,10);
 UPDATE menu SET sold_out = 1 WHERE menu_id = 5;  -- 츄러스(재고 0) 품절. Workbench 안전 모드(Safe Updates)는 키 없는 WHERE를 막으므로 번호로 지정
 INSERT INTO game (name, genre, min_player, max_player, difficulty, play_min, stock, location) VALUES
- ('스플렌더','전략',2,4,2,30,2,'A-2'),('딕싯','가족',3,6,2,30,2,'C-2'),('우노','카드',2,10,1,20,4,'B-2'),
- ('젠가','파티',2,8,1,15,2,'C-1'),('할리갈리','카드',2,6,1,20,2,'B-1'),('카탄','전략',3,4,3,60,1,'A-1');
+ ('스플렌더','전략',2,4,2,30,1,'A-2'),('딕싯','가족',3,6,2,30,2,'C-2'),('우노','카드',2,10,1,20,4,'B-2'),
+ ('젠가','파티',2,8,1,15,3,'C-1'),('할리갈리','카드',2,6,1,20,2,'B-1'),('카탄','전략',3,4,3,60,2,'A-1'),
+ ('마피아','추리',5,12,2,40,1,'D-1'),('클루','추리',3,6,3,50,0,'D-2');
+UPDATE game SET status = '부품누락' WHERE game_id = 7;
+UPDATE game SET status = '폐기' WHERE game_id = 8;
 INSERT INTO member (name, phone1, phone2, phone3, gender, join_date) VALUES
  ('김민수','010','1234','5678','M','2026-03-01'),('이서연','010','2345','1122','F','2026-05-10');
