@@ -163,7 +163,7 @@ CREATE TABLE payment_detail (
   item_type        VARCHAR(10)   NOT NULL COMMENT '항목 구분 (이용료 / 메뉴)',
   menu_id          INT           COMMENT '상품(메뉴) 번호. 이용료 줄은 NULL',
   qty              INT           NOT NULL COMMENT '구매 수량 (이용료 줄은 이용 인원)',
-  unit_price       INT           NOT NULL COMMENT '구매 단가 (메뉴는 menu.price에서 불러옴, 이용료는 1인 요금)',
+  unit_price       INT           NOT NULL COMMENT '구매 단가 (메뉴는 주문 상세의 주문 당시 단가, 이용료는 1인 요금)',
   subtotal         INT           NOT NULL COMMENT '상품별 결제 금액 소계 (qty × unit_price)',
   PRIMARY KEY (pay_detail_id),
   FOREIGN KEY (pay_id) REFERENCES payment(pay_id) ON DELETE CASCADE,
