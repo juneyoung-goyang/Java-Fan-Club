@@ -14,10 +14,12 @@ public class GameDAO {
     public List<GameDTO> findAll() throws SQLException {
         List<GameDTO> list = new ArrayList<>();
         try (Connection con = DBUtil.getConnection();
-             PreparedStatement ps = con.prepareStatement("SELECT game_id, name, stock, status FROM game ORDER BY name");
+             PreparedStatement ps = con.prepareStatement("SELECT * FROM game ORDER BY name");
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                list.add(new GameDTO(rs.getInt("game_id"), rs.getString("name"), rs.getInt("stock"), rs.getString("status")));
+                list.add(new GameDTO(rs.getInt("game_id"), rs.getString("name"), rs.getString("genre"),
+                        rs.getInt("min_player"), rs.getInt("max_player"), rs.getInt("difficulty"),
+                        rs.getInt("play_min"), rs.getInt("stock"), rs.getString("status"), rs.getString("location")));
             }
         }
         return list;
